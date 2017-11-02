@@ -16,22 +16,22 @@ public class XXXProcessor implements ServerMessageProcessor
 	@Override
 	public void beforeConnectionClose(ChannelConnection connection)
 	{
-         //处理connection close事件
-         .....
+        //处理connection close事件
+        .....
 	}
 
 	@Override
 	public void onMessageRecv(ChannelConnection connection)
 	{
-		     //处理receive事件
+	       //处理receive事件
          .....
 	}
 
 	@Override
 	public void onMessageSend(ChannelConnection connection)
 	{
-      //处理send事件
-      .....
+        //处理send事件
+        .....
 	}
 }
 
@@ -56,7 +56,7 @@ public class Demo
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		ssc.socket().bind (new InetSocketAddress(1234));
 		ssc.configureBlocking (false);
-    
+
     //创建ACCEPT事件请求
     EventListenRequest seed = new ChannelEventListenRequest(ssc,handler);
 		seed.setRegistEvents(SelectionKey.OP_ACCEPT);
