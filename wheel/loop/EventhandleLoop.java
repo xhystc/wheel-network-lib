@@ -61,14 +61,12 @@ public class EventhandleLoop implements Runnable
 			}
 			count++;
 			if(request!=null){
-				System.out.println("take ready event "+((ChannelEventListenRequest)request).isAcceptable());
-				List<EventListenRequest> ret = request.getHandler().handleEvent(request);
+				List<EventListenRequest> ret = request.getHandler().handleEvent(request,register);
 				requests.addAll(ret);
 			}
 			if(requests.size()>0 && count>10){
 				for(EventListenRequest r : requests){
 					register.regist(r);
-					System.out.println("add regist queue:"+r.getRegistEvents());
 				}
 				count=0;
 				requests.clear();

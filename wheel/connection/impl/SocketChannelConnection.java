@@ -11,8 +11,6 @@ import java.nio.channels.SocketChannel;
 public class SocketChannelConnection implements ChannelConnection
 {
 
-
-
 	private SocketChannel channel;
 	ChannelBuffer buffer = new SendQueueChannelBuffer(1024*5);
 	private boolean isShutdownRead=false;
@@ -81,11 +79,13 @@ public class SocketChannelConnection implements ChannelConnection
 		return buffer.readBufferSize();
 	}
 
+	@Override
 	public byte[] peek()
 	{
 		return buffer.peek();
 	}
 
+	@Override
 	public byte[] recv()
 	{
 		return buffer.read();

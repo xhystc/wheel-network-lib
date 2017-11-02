@@ -87,7 +87,7 @@ public class EventLoop implements Runnable
 				int count=0;
 				while((request=register.takeRegist(0))!=null){
 					if(request instanceof ChannelEventListenRequest){
-						registChannelEvent((ChannelEventListenRequest) request);
+						registChannelEvent((request));
 					}else {
 						throw new RuntimeException("unsupport event request");
 					}

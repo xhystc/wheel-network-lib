@@ -4,6 +4,7 @@ import com.xhystc.wheel.Processor.MessageProcessor;
 import com.xhystc.wheel.Processor.ServerMessageProcessor;
 
 import com.xhystc.wheel.connection.impl.SocketChannelConnection;
+import com.xhystc.wheel.event.register.EventRegister;
 import com.xhystc.wheel.event.request.ChannelEventListenRequest;
 import com.xhystc.wheel.event.request.EventListenRequest;
 
@@ -38,7 +39,7 @@ public class TcpChannelEventHandler implements EventHandler
 	}
 
 	@Override
-	public List<EventListenRequest> handleEvent(EventListenRequest request)
+	public List<EventListenRequest> handleEvent(EventListenRequest request, EventRegister register)
 	{
 		ChannelEventListenRequest channelRequest = (ChannelEventListenRequest) request;
 		SelectableChannel channel = channelRequest.channel();
@@ -46,17 +47,17 @@ public class TcpChannelEventHandler implements EventHandler
 		List<EventListenRequest> ret = new LinkedList<>();
 		if(channel instanceof ServerSocketChannel)
 		{
-			doServerSockChannel(channelRequest,ret);
+			doServerSockChannel(channelRequest,ret,register);
 		}
 		else
 		{
-			doSocketChannel(channelRequest,ret);
+			doSocketChannel(channelRequest,ret,register);
 		}
 		return ret;
 
 	}
 
-	private void doServerSockChannel(ChannelEventListenRequest request,List<EventListenRequest> requests){
+	private void doServerSockChannel(ChannelEventListenRequest request, List<EventListenRequest> requests, EventRegister register){
 		ServerSocketChannel channel = (ServerSocketChannel) request.channel();
 		try
 		{
@@ -70,25 +71,33 @@ public class TcpChannelEventHandler implements EventHandler
 				SocketChannelConnection connection = new SocketChannelConnection(newChannel);
 				connections.put(newChannel,connection);
 				if(processor instanceof ServerMessageProcessor){
-					((ServerMessageProcessor)processor).onClientAccept(connection);
+					((ServerMessageProcessor)processor).onClientAccept(connection,register,this);
 				}
-				requests.add(doRegist(newChannel));
+				ChannelEventListenRequest r = new ChannelEventListenRequest(newChannel,this);
+				requests.add(doRegist(r));
 
 			}
-			requests.add(doRegist(channel));
+			requests.add(doRegist(request));
 
 		}catch (IOException ioe){
 			ioe.printStackTrace();
 		}
 	}
 
-	private void doSocketChannel(ChannelEventListenRequest request,List<EventListenRequest> requests){
+	private void doSocketChannel(ChannelEventListenRequest request,List<EventListenRequest> requests, EventRegister register){
 		SocketChannelConnection connection = connections.get(request.channel());
+		if(connection==null){
+			connection = new SocketChannelConnection((SocketChannel) request.channel());
+			connections.put(request.channel(),connection);
+		}
+		if(request.isTouchable()){
+			processor.onTouch(connection,register,this);
+		}
 		if(request.isReadable()){
 			try
 			{
 				connection.recvFromChannel();
-				processor.onMessageRecv(connection);
+				processor.onMessageRecv(connection,register,this);
 			}catch (IOException ioe){
 
 			}
@@ -97,17 +106,17 @@ public class TcpChannelEventHandler implements EventHandler
 			try
 			{
 				connection.sendToChannel();
-				processor.onMessageSend(connection);
+				processor.onMessageSend(connection,register,this);
 			}catch (IOException ioe){
 
 			}
 		}
-		requests.add(doRegist(connection.channel()));
+		requests.add(doRegist(request));
 	}
 
-	private ChannelEventListenRequest doRegist(SelectableChannel channel){
-		ChannelEventListenRequest request =  new ChannelEventListenRequest(channel,this);
-		SocketChannelConnection connection = connections.get(channel);
+	private ChannelEventListenRequest doRegist(ChannelEventListenRequest request){
+		request.setRegistEvents(0);
+		SocketChannelConnection connection = connections.get(request.channel());
 		if (connection==null){
 			request.registAcceptEvent();
 		}
