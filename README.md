@@ -7,7 +7,7 @@
 public class XXXProcessor implements ServerMessageProcessor
 {
 	@Override
-	public void onClientAccept(ChannelConnection connection)
+	public void onClientAccept(ChannelConnection connection, EventRegister register, EventHandler handler)
 	{
         //处理accept事件
         .....
@@ -21,14 +21,14 @@ public class XXXProcessor implements ServerMessageProcessor
 	}
 
 	@Override
-	public void onMessageRecv(ChannelConnection connection)
+	public void onMessageRecv(ChannelConnection connection, EventRegister register, EventHandler handler)
 	{
 	       //处理receive事件
          .....
 	}
 
 	@Override
-	public void onMessageSend(ChannelConnection connection)
+	public void onMessageSend(ChannelConnection connection, EventRegister register, EventHandler handler)
 	{
         //处理send事件
         .....
