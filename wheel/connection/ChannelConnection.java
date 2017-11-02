@@ -11,14 +11,17 @@ public interface ChannelConnection
 	boolean isShutdownWrite();
 	boolean send(byte[] sendBuffer);
 	boolean send(InputStream inputStream);
+	byte[] peek();
+	byte[] recv();
+	String peekAsString(String charset);
+	String recvAsString(String charset);
 	long sendToChannel() throws IOException;
 	int recvFromChannel() throws IOException;
 	Channel channel();
 	boolean sendOver();
 	public int recvBufferSize();
-	String peekAsString(String charset);
-	String recvAsString(String charset);
 	void clearRecvBuffer();
 	Object getData();
 	void setData(Object data);
+
 }
