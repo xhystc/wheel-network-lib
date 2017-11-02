@@ -121,7 +121,7 @@ public class TcpChannelEventHandler implements EventHandler
 				request.registWriteEvent();
 			}
 			if(request.getRegistEvents()==0 && processor instanceof ServerMessageProcessor){
-				((ServerMessageProcessor)processor).beforeClientLeave(connection);
+				((ServerMessageProcessor)processor).beforeConnectionClose(connection);
 				connections.remove(request.channel());
 			}
 		}

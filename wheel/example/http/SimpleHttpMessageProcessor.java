@@ -17,7 +17,7 @@ public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 	}
 
 	@Override
-	public void beforeClientLeave(ChannelConnection connection)
+	public void beforeConnectionClose(ChannelConnection connection)
 	{
 
 	}
