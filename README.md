@@ -48,8 +48,8 @@ public class Demo
 	{
 
     //创建Proccessor和eventHandle
-    ServerMessageProcessor processor = new XXXProcessor();
-    EventHandler handler = new TcpChannelEventHandler(processor);
+      ServerMessageProcessor processor = new XXXProcessor();
+      EventHandler handler = new TcpChannelEventHandler(processor);
 
     //打开channel,selector
 		Selector selector = Selector.open();
@@ -58,7 +58,7 @@ public class Demo
 		ssc.configureBlocking (false);
 
     //创建ACCEPT事件请求
-    EventListenRequest seed = new ChannelEventListenRequest(ssc,handler);
+        EventListenRequest seed = new ChannelEventListenRequest(ssc,handler);
 		seed.setRegistEvents(SelectionKey.OP_ACCEPT);
 
 		//创建EventLoop和EventRegister
