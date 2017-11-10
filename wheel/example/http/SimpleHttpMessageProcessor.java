@@ -18,14 +18,14 @@ import java.util.TimerTask;
 public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 {
 	@Override
-	public void onClientAccept(ChannelConnection connection, EventRegister register, EventHandler handler)
+	public void onClientAccept(ChannelConnection connection, EventListenRequest request, EventHandler handler)
 	{
 		Timer timer = new Timer();
 		TimerTest test = new TimerTest();
-		test.register=register;
+		test.register=request.register();
 		test.connection= connection;
 		test.handler=handler;
-		timer.schedule(test,0,2000);
+		timer.schedule(test,5000);
 	}
 
 	@Override
@@ -35,7 +35,7 @@ public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 	}
 
 	@Override
-	public void onMessageRecv(ChannelConnection connection, EventRegister register, EventHandler handler)
+	public void onMessageRecv(ChannelConnection connection, EventListenRequest request, EventHandler handler)
 	{
 		try
 		{
@@ -84,14 +84,15 @@ public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 	}
 
 	@Override
-	public void onMessageSend(ChannelConnection connection, EventRegister register, EventHandler handler)
+	public void onMessageSend(ChannelConnection connection, EventListenRequest request, EventHandler handler)
 	{
+
 	}
 
 	@Override
-	public void onTouch(ChannelConnection connection, EventRegister register, EventHandler handler)
+	public void onTouch(ChannelConnection connection, EventListenRequest request, EventHandler handler)
 	{
-		System.out.println("on touch:"+Thread.currentThread().toString());
+//		connection.shutdown();
 	}
 
 	static class TimerTest extends TimerTask
@@ -102,7 +103,7 @@ public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 		@Override
 		public void run()
 		{
-			EventListenRequest request = new ChannelEventListenRequest((SelectableChannel) connection.channel(),handler);
+			EventListenRequest request = new ChannelEventListenRequest((SelectableChannel) connection.channel(),handler,register);
 			request.setReadyEvents(ChannelEventListenRequest.EV_TOUCH);
 			register.ready(request);
 		}

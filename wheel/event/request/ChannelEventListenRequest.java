@@ -1,6 +1,7 @@
 package com.xhystc.wheel.event.request;
 
 import com.xhystc.wheel.event.handler.EventHandler;
+import com.xhystc.wheel.event.register.EventRegister;
 
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -19,8 +20,8 @@ public class ChannelEventListenRequest extends EventListenRequest
 
 	/**
 	 * */
-	public ChannelEventListenRequest(SelectableChannel channel,EventHandler handler){
-		super(handler);
+	public ChannelEventListenRequest(SelectableChannel channel, EventHandler handler, EventRegister register){
+		super(handler,register);
 		this.channel = channel;
 	}
 

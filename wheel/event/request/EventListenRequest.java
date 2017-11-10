@@ -1,6 +1,7 @@
 package com.xhystc.wheel.event.request;
 
 import com.xhystc.wheel.event.handler.EventHandler;
+import com.xhystc.wheel.event.register.EventRegister;
 
 import java.nio.channels.SelectionKey;
 
@@ -11,7 +12,11 @@ public class EventListenRequest
 	protected int readyEvents=0;
 	EventHandler handler;
 	Object data=null;
+	EventRegister register;
 
+	public EventRegister register(){
+		return register;
+	}
 	public void attach(Object obj){
 		data=obj;
 	}
@@ -19,8 +24,9 @@ public class EventListenRequest
 		return data;
 	}
 
-	protected EventListenRequest(EventHandler handler){
+	protected EventListenRequest(EventHandler handler,EventRegister register){
 		this.handler = handler;
+		this.register = register;
 	}
 
 	public EventHandler getHandler()

@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface EventHandler
 {
-	List<EventListenRequest> handleEvent(EventListenRequest request, EventRegister register);
+	List<EventListenRequest> handleEvent(EventListenRequest request);
 }

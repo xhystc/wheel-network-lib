@@ -1,7 +1,7 @@
 package com.xhystc.wheel.example;
 
 import com.xhystc.wheel.Processor.ServerMessageProcessor;
-import com.xhystc.wheel.event.handler.TcpChannelEventHandler;
+import com.xhystc.wheel.event.handler.ServerChannelEventHandler;
 import com.xhystc.wheel.event.request.ChannelEventListenRequest;
 import com.xhystc.wheel.event.request.EventListenRequest;
 import com.xhystc.wheel.event.register.EventRegister;
@@ -29,10 +29,11 @@ public class MainTest
 		ssc.socket().bind (new InetSocketAddress(1234));
 		ssc.configureBlocking (false);
 		ServerMessageProcessor processor = new SimpleHttpMessageProcessor();
-		EventHandler handler = new TcpChannelEventHandler(processor);
-		EventListenRequest seed = new ChannelEventListenRequest(ssc,handler);
-		seed.setRegistEvents(SelectionKey.OP_ACCEPT);
+		EventHandler handler = new ServerChannelEventHandler(processor);
+
 		EventRegister register = new EventRegisterImpl();
+		EventListenRequest seed = new ChannelEventListenRequest(ssc,handler,register);
+		seed.setRegistEvents(SelectionKey.OP_ACCEPT);
 		EventLoop eventLoop = new EventLoop(selector,register,seed);
 		ExecutorService service = Executors.newFixedThreadPool(7);
 		for(int i=0;i<7;i++){
