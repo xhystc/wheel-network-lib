@@ -1,6 +1,8 @@
 
 ## 示例
 
+#### HTTP服务器demo：http://localhost:1234/index.html
+
 ### 第一步
 实现 Proccessor
 ```
@@ -16,7 +18,7 @@ public class XXXProcessor implements ServerMessageProcessor
 	@Override
 	public boolean onConnectionTimeout(SocketChannelConnection connection)
 	{
-        //处理connection close事件
+        //处理connection timeout事件
         .....
 	}
 
