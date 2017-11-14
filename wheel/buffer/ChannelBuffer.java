@@ -8,6 +8,6 @@ import java.nio.channels.WritableByteChannel;
 public interface ChannelBuffer extends Buffer
 {
 	long sendToChannel(WritableByteChannel channel) throws IOException;
-	int recvFromChannel(ReadableByteChannel channel) throws IOException;
+	long recvFromChannel(ReadableByteChannel channel) throws IOException;
 	int readBufferSize();
 }

@@ -1,61 +1,56 @@
 package com.xhystc.wheel.loop;
 
-import com.xhystc.wheel.event.request.ChannelEventListenRequest;
-import com.xhystc.wheel.event.request.EventListenRequest;
-import com.xhystc.wheel.event.register.EventRegister;
+import com.xhystc.wheel.connection.ChannelConnection;
+import com.xhystc.wheel.connection.ServerSocketChannelConnection;
+import com.xhystc.wheel.connection.SocketChannelConnection;
+import com.xhystc.wheel.connection.impl.SocketChannelConnectionImpl;
+import com.xhystc.wheel.event.manager.EventManager;
+import com.xhystc.wheel.poller.Poller;
 
 import java.io.IOException;
-import java.nio.channels.Channel;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.nio.channels.*;
+import java.util.*;
 
 
 public class EventLoop implements Runnable
 {
-	private Selector selector;
-	private EventRegister register;
-	private Map<Channel,EventListenRequest> requestMap = new HashMap<>();
+	private Poller poller;
+	private EventManager manager;
+	private boolean quit = false;
 
-	public EventLoop(Selector selector,EventRegister register,EventListenRequest seed) throws IOException
+	public EventLoop(Poller poller, EventManager manager, ChannelConnection seed) throws IOException
 	{
-		this.selector = selector;
-		this.register = register;
-		registChannelEvent(seed);
+		this.poller = poller;
+		this.manager = manager;
+		poller.regist(seed);
 	}
 
-	public EventLoop(Selector selector,EventRegister register,EventListenRequest[] seeds) throws IOException
+	public EventLoop(Selector selector, EventManager register, List<ChannelConnection> seeds) throws IOException
 	{
-		this.selector = selector;
-		this.register = register;
-		for(EventListenRequest request : seeds){
-			registChannelEvent(request);
-		}
+		this.poller = poller;
+		this.manager = manager;
+		poller.regist(seeds);
 	}
 	public EventLoop(){}
 
-	public Selector getSelector()
+	public Poller getPoller()
 	{
-		return selector;
+		return poller;
 	}
 
-	public void setSelector(Selector selector)
+	public void setPoller(Poller poller)
 	{
-		this.selector = selector;
+		this.poller = poller;
 	}
 
-	public EventRegister getRegister()
+	public EventManager getManager()
 	{
-		return register;
+		return manager;
 	}
 
-	public void setRegister(EventRegister register)
+	public void setManager(EventManager manager)
 	{
-		this.register = register;
+		this.manager = manager;
 	}
 
 
@@ -63,38 +58,34 @@ public class EventLoop implements Runnable
 	public void run()
 	{
 		System.out.println("thread"+Thread.currentThread().toString()+" start");
-		boolean quit=false;
 
 		while (!quit){
 			try
 			{
-				int res = selector.select(100);
-
-				if(res>0){
-					Set<SelectionKey> readyKey = selector.selectedKeys();
-					Iterator iterator = readyKey.iterator();
-					while(iterator.hasNext()){
-						SelectionKey key = (SelectionKey) iterator.next();
-						int readys = key.readyOps();
-						key.channel().register(selector,0);
-						EventListenRequest request = requestMap.get(key.channel());
-						request.setReadyEvents(readys);
-						register.ready(request);
-						iterator.remove();
+				List<ChannelConnection> connections = poller.poll(100);
+				for(ChannelConnection connection : connections){
+					if(connection instanceof ServerSocketChannelConnection){
+						ServerSocketChannelConnection ssc = (ServerSocketChannelConnection) connection;
+						while(true){
+							SocketChannelConnection newConnection = doAccpet(ssc);
+							if (newConnection==null){
+								break;
+							}
+							newConnection.event().addCreate();
+							manager.ready(newConnection);
+						}
+					}else if(connection instanceof SocketChannelConnection){
+							manager.ready((SocketChannelConnection) connection);
+					}else {
+						throw new IOException("not support connection");
 					}
 				}
-				EventListenRequest request;
-				int count=0;
-				while((request=register.takeRegist(0))!=null){
-					if(request instanceof ChannelEventListenRequest){
-						registChannelEvent((request));
-					}else {
-						throw new RuntimeException("unsupport event request");
+				SocketChannelConnection connection = null;
+				while((connection = manager.takeRegist())!=null){
+					if(connection.isShutdown()){
+						System.out.println("shut down handle");
 					}
-					if (++count>100)
-					{
-						break;
-					}
+					poller.regist(connection);
 				}
 
 			} catch (IOException e)
@@ -103,27 +94,15 @@ public class EventLoop implements Runnable
 			}
 		}
 	}
-	private void registChannelEvent(EventListenRequest request) throws IOException
+	private SocketChannelConnection doAccpet(ServerSocketChannelConnection connection) throws IOException
 	{
-		if(request instanceof  ChannelEventListenRequest){
-			SelectableChannel channel = ((ChannelEventListenRequest)request).channel();
-			int registEvents = request.getRegistEvents();
-			if(registEvents==0){
-				requestMap.remove(channel);
-				SelectionKey key = channel.keyFor(selector);
-				if(key!=null){
-					key.cancel();
-					channel.close();
-				}
-				System.out.println("connection close:"+requestMap.size());
-			}else {
-				channel.register(selector,registEvents);
-				requestMap.put(channel,request);
-			}
+		SocketChannelConnection newConnection =connection.accept();
+		if(newConnection==null){
+			return null;
 		}
-		else{
-			throw new RuntimeException("unsupport event request");
-		}
+		((SocketChannel)newConnection.channel()).configureBlocking(false);
+		System.out.println("connection accept ip:"+((SocketChannel)newConnection.channel()).getRemoteAddress().toString());
+		return newConnection;
 	}
 }
 

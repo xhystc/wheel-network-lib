@@ -1,11 +1,11 @@
 package com.xhystc.wheel.Processor;
 
-import com.xhystc.wheel.connection.ChannelConnection;
-import com.xhystc.wheel.event.handler.EventHandler;
-import com.xhystc.wheel.event.request.EventListenRequest;
+import com.xhystc.wheel.connection.SocketChannelConnection;
 
 public interface ServerMessageProcessor extends MessageProcessor
 {
-	void onClientAccept(ChannelConnection connection, EventListenRequest request, EventHandler handler);
-	void beforeConnectionClose(ChannelConnection connection);
+	void onClientAccept(SocketChannelConnection connection);
+	boolean onConnectionTimeout(SocketChannelConnection connection);
+	void onMessageRecv(SocketChannelConnection connection,long nread);
+	void onMessageSend(SocketChannelConnection connection,long nwrite);
 }

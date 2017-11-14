@@ -1,113 +1,100 @@
 package com.xhystc.wheel.example.http;
 
 import com.xhystc.wheel.Processor.ServerMessageProcessor;
-import com.xhystc.wheel.connection.ChannelConnection;
-import com.xhystc.wheel.event.handler.EventHandler;
-import com.xhystc.wheel.event.register.EventRegister;
-import com.xhystc.wheel.event.request.ChannelEventListenRequest;
-import com.xhystc.wheel.event.request.EventListenRequest;
+import com.xhystc.wheel.connection.SocketChannelConnection;
+import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.channels.SelectableChannel;
+import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class SimpleHttpMessageProcessor implements ServerMessageProcessor
 {
+
 	@Override
-	public void onClientAccept(ChannelConnection connection, EventListenRequest request, EventHandler handler)
+	public void onClientAccept(SocketChannelConnection connection)
 	{
+		System.out.println("on acccept");
 		Timer timer = new Timer();
-		TimerTest test = new TimerTest();
-		test.register=request.register();
-		test.connection= connection;
-		test.handler=handler;
-		timer.schedule(test,5000);
-	}
-
-	@Override
-	public void beforeConnectionClose(ChannelConnection connection)
-	{
-
-	}
-
-	@Override
-	public void onMessageRecv(ChannelConnection connection, EventListenRequest request, EventHandler handler)
-	{
-		try
+		timer.schedule(new TimerTask()
 		{
-			if(connection.getData()==null){
-				String httpStr = connection.peekAsString("utf-8");
-				if(httpStr.contains("\r\n\r\n")){
-					HttpRequest httpRequest = new HttpRequest();
-					String[] div = httpStr.split("\r\n\r\n");
-						HttpHeader header = new HttpHeader(div[0]);
-						String contentLength = header.getHeaders().get("content-length");
-						if(header.getMethod().equals("get") || contentLength.equals("0") ){
-							connection.recvAsString("utf-8");
-							String filePath ="./dota/"+ header.getPath().substring(1, header.getPath().length());
-							File file = new File(filePath);
-							if(file.length()==0){
-								connection.send(HttpResponse.get404ResponseHead().getBytes("utf-8"));
-								connection.setData(null);
-							}else {
-								connection.send(HttpResponse.get200ResponseHead(file).getBytes("utf-8"));
-								connection.send(new FileInputStream(file));
-								connection.setData(null);
-							}
-
-						}else {
-							connection.send(HttpResponse.get404ResponseHead().getBytes("utf-8"));
-							connection.setData(null);
-						}
-						Map<String,String> headers = header.getHeaders();
-						for(Map.Entry<String,String> en : headers.entrySet()){
-							System.out.println(en.getKey()+"="+en.getValue());
-						}
-
-
+			SocketChannelConnection c = connection;
+			@Override
+			public void run()
+			{
+				try
+				{
+					System.out.println("send xixi");
+					connection.send("xixi".getBytes("utf-8"));
+				} catch (UnsupportedEncodingException e)
+				{
+					e.printStackTrace();
 				}
 			}
-			else {
-				throw new IOException("illegal state");
+		},5000);
+	}
+
+	@Override
+	public boolean onConnectionTimeout(SocketChannelConnection connection)
+	{
+		System.out.println("time out");
+		return false;
+	}
+
+	@Override
+	public void onMessageRecv(SocketChannelConnection connection,long nread)
+	{
+		System.out.println("nread:"+nread);
+		if(nread<0 || connection.isShutdownWrite()){
+			connection.shutdown();
+			return;
+		}
+		System.out.println("get message");
+		try
+		{
+			String httpStr = connection.peekAsString("utf-8");
+			if(httpStr.contains("\r\n\r\n")){
+				HttpRequest httpRequest = new HttpRequest();
+				String[] div = httpStr.split("\r\n\r\n");
+				HttpHeader header = new HttpHeader(div[0]);
+				String contentLength = header.getHeaders().get("content-length");
+				if(header.getMethod().equals("get") || contentLength.equals("0") ){
+					connection.recvAsString("utf-8");
+					String filePath ="./dota/"+ header.getPath().substring(1, header.getPath().length());
+					File file = new File(filePath);
+					if(file.length()==0){
+						connection.send(HttpResponse.get404ResponseHead().getBytes("utf-8"));
+						System.out.println("send file size:"+file.length());
+
+					}else {
+						connection.send(HttpResponse.get200ResponseHead(file).getBytes("utf-8"));
+						connection.send(new FileInputStream(file));
+
+						System.out.println("send file size:"+file.length());
+					}
+				}else {
+					connection.send(HttpResponse.get404ResponseHead().getBytes("utf-8"));
+
+				}
 			}
 		} catch (IOException e)
 		{
 			e.printStackTrace();
-			connection.setData(null);
 			connection.shutdown();
 			e.printStackTrace();
 		}
 	}
 
 	@Override
-	public void onMessageSend(ChannelConnection connection, EventListenRequest request, EventHandler handler)
+	public void onMessageSend(SocketChannelConnection connection,long nwrite)
 	{
-
+		System.out.println("send over");
 	}
 
-	@Override
-	public void onTouch(ChannelConnection connection, EventListenRequest request, EventHandler handler)
-	{
-//		connection.shutdown();
-	}
-
-	static class TimerTest extends TimerTask
-	{
-		EventRegister register;
-		EventHandler handler;
-		ChannelConnection connection;
-		@Override
-		public void run()
-		{
-			EventListenRequest request = new ChannelEventListenRequest((SelectableChannel) connection.channel(),handler,register);
-			request.setReadyEvents(ChannelEventListenRequest.EV_TOUCH);
-			register.ready(request);
-		}
-	}
 }
 
 

@@ -10,14 +10,17 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SendQueueChannelBuffer implements ChannelBuffer
 {
 	private int bufferSize = 1024*4;
-	private ByteBuffer channelBuffer;
-	byte[] inputBuffer;
-	private Queue<InputStream> writeQueue;
-	private ByteOutputStream readBuffer;
+	private final ByteBuffer channelBuffer;
+	final byte[] inputBuffer;
+	private final Queue<InputStream> writeQueue;
+	private final ByteOutputStream readBuffer;
+
+
 
 	int version = 0;
 	int lastPeekVersion = 0;
@@ -34,85 +37,83 @@ public class SendQueueChannelBuffer implements ChannelBuffer
 	@Override
 	public long sendToChannel(WritableByteChannel channel) throws IOException
 	{
-		long sum = 0;
-		boolean first = true;
-		while( writeQueue.peek()!=null){
-			InputStream inputStream = writeQueue.peek();
-			boolean readover = false;
-			while (true){
-				inputStream.mark(bufferSize);
-				int count = inputStream.read(inputBuffer,0,bufferSize);
-				if (count<=0){
-					readover = true;
-					break;
-				}
-				inputStream.reset();
-				channelBuffer.clear();
-				channelBuffer.put(inputBuffer,0,count);
-				channelBuffer.flip();
-				int temp = 0;
 
-				temp = channel.write(channelBuffer);
-				if(temp>0){
-					sum+=temp;
-					inputStream.skip(temp);
-				}else if(first){
-					throw new IOException("remote shutdown read");
+		synchronized (writeQueue){
+			long sum = 0;
+			while( writeQueue.peek()!=null){
+				InputStream inputStream = writeQueue.peek();
+				boolean readover = false;
+				while (true){
+					inputStream.mark(bufferSize);
+					int count = inputStream.read(inputBuffer,0,bufferSize);
+					if (count<=0){
+						readover = true;
+						break;
+					}
+					inputStream.reset();
+					channelBuffer.clear();
+					channelBuffer.put(inputBuffer,0,count);
+					channelBuffer.flip();
+					int temp = 0;
+
+					temp = channel.write(channelBuffer);
+					if(temp>0){
+						sum+=temp;
+						inputStream.skip(temp);
+					}
+					if(temp<count){
+						break;
+					}
 				}
-				if(temp<count){
-					break;
+				if(readover){
+					try
+					{
+						writeQueue.poll().close();
+					}catch (IOException ioe){
+						ioe.printStackTrace();
+					}
 				}
-				if (first){
-					first = false;
+				else {
+					return sum;
 				}
 			}
-			if(readover){
-				try
-				{
-					writeQueue.poll().close();
-				}catch (IOException ioe){
-					ioe.printStackTrace();
-				}
-			}
-			else {
-				return sum;
-			}
+			return sum;
 		}
-		return sum;
 	}
 
 	@Override
-	public int recvFromChannel(ReadableByteChannel channel) throws IOException
+	public long recvFromChannel(ReadableByteChannel channel) throws IOException
 	{
 
-		int sum=0;
-		boolean first = true;
-		version++;
-		while(true){
-			channelBuffer.clear();
-			int temp = 0;
-			temp = channel.read(channelBuffer);
-			if(temp==-1|| first&&temp==0){
-				throw new IOException("remote shutdown write");
-			}
-			if(first) {
-				first = false;
-			}
+		synchronized (readBuffer){
+			long sum=0;
+			version++;
+			while(true){
+				channelBuffer.clear();
+				int temp = 0;
+				temp = channel.read(channelBuffer);
+				if(temp==-1){
+					throw new IOException("remote shutdown write");
+				}
 
-			channelBuffer.flip();
-			if(temp<=0) {
-				return sum;
+				channelBuffer.flip();
+				if(temp==0) {
+					return sum;
+				}
+				channelBuffer.get(inputBuffer,0,temp);
+				readBuffer.write(inputBuffer,0,temp);
+				sum+=temp;
 			}
-			channelBuffer.get(inputBuffer,0,temp);
-			readBuffer.write(inputBuffer,0,temp);
-			sum+=temp;
 		}
 	}
 
 	@Override
 	public int readBufferSize()
 	{
-		return readBuffer.size();
+		synchronized (readBuffer){
+			return readBuffer.size();
+		}
+
 	}
 
 	@Override
@@ -122,7 +123,9 @@ public class SendQueueChannelBuffer implements ChannelBuffer
 		{
 			inputStream = new BufferedInputStream(inputStream);
 		}
-		writeQueue.add(inputStream);
+		synchronized (writeQueue){
+			writeQueue.add(inputStream);
+		}
 		return true;
 	}
 
@@ -139,28 +142,42 @@ public class SendQueueChannelBuffer implements ChannelBuffer
 	}
 
 
-	@Override
-	public byte[] peek()
+
+	private byte[] doPeek(boolean clear)
 	{
-		if(version==lastPeekVersion)
-		{
-			return lastPeek;
+		synchronized (readBuffer){
+			try
+			{
+				if(version==lastPeekVersion)
+				{
+					return lastPeek;
+				}
+				if (readBuffer.size()<=0)
+				{
+					return new byte[0];
+				}
+				lastPeek = Arrays.copyOf(readBuffer.getBytes(),readBuffer.size());
+				lastPeekVersion=version;
+				return lastPeek;
+			}finally
+			{
+				if(clear){
+					readBuffer.reset();
+					version++;
+				}
+			}
+
 		}
-		if (readBuffer.size()<=0)
-		{
-			return new byte[0];
-		}
-		lastPeek = Arrays.copyOf(readBuffer.getBytes(),readBuffer.size());
-		lastPeekVersion=version;
-		return lastPeek;
 	}
 
 	@Override
+	public byte[] peek(){
+		return doPeek(false);
+	}
+	@Override
 	public byte[] read()
 	{
-		byte[] ret = peek();
-		clearReadBuffer();
-		return ret;
+		return doPeek(true);
 	}
 
 
@@ -168,13 +185,17 @@ public class SendQueueChannelBuffer implements ChannelBuffer
 	@Override
 	public void clearReadBuffer()
 	{
-		readBuffer = new ByteOutputStream(bufferSize);
-		version++;
+		synchronized (readBuffer){
+			readBuffer.reset();
+			version++;
+		}
 	}
 
 	@Override
 	public void clearWriteBuffer()
 	{
-		writeQueue.clear();
+		synchronized (writeQueue){
+			writeQueue.clear();
+		}
 	}
 }
