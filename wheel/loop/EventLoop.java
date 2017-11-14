@@ -84,6 +84,7 @@ public class EventLoop implements Runnable
 				while((connection = manager.takeRegist())!=null){
 					if(connection.isShutdown()){
 						System.out.println("shut down handle");
+						connection.channel().close();
 					}
 					poller.regist(connection);
 				}
