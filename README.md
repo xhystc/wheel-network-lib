@@ -64,7 +64,7 @@ public class Demo
 		EventLoop eventLoop = new EventLoop(poller,manager,seed);
 
 		//创建线程池、启动work线程
-		ExecutorService pool = new ThreadPoolExecutor(8,10,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(),factory);
+		ExecutorService pool = new ThreadPoolExecutor(8,8,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(),factory);
 		WorkLoop workLoop = new WorkLoop(manager);
 		for(int i=0;i<8;i++){
 			pool.execute(workLoop);
