@@ -32,7 +32,10 @@ public class Demo
 		ServerSocketChannel ssc = ServerSocketChannel.open();
 		ssc.socket().bind (new InetSocketAddress(1234));
 		ssc.configureBlocking (false);
-		ServerMessageProcessor processor = new SimpleHttpMessageProcessor();
+
+		ExecutorService service = Executors.newCachedThreadPool();
+
+		ServerMessageProcessor processor = new SimpleHttpMessageProcessor(service);
 		EventLoopThreadFactory factory = new EventLoopThreadFactory(8);
 
 		ExecutorService pool = new ThreadPoolExecutor(8,10,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(),factory);
